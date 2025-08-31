@@ -24,6 +24,8 @@ class DialogState(Enum):
     BOT_DESCRIPTION = "bot_description"
     COMMANDS = "commands"
     RESPONSES = "responses"
+    CUSTOMIZE_COMMANDS = "customize_commands"
+    CUSTOMIZE_RESPONSES = "customize_responses"
     SETTINGS = "settings"
     CONFIRM = "confirm"
     FINISHED = "finished"
