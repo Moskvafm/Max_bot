@@ -56,6 +56,7 @@ class CallbackQuery:
     from_user: User
     message: Optional[Message] = None
     data: Optional[str] = None
+    _api_client: Any = None  # type: ignore
 
 
 @dataclass

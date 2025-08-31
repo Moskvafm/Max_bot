@@ -6,6 +6,7 @@ import os
 import asyncio
 from max_bot import Dispatcher
 from max_bot.filters.base import command, text
+from max_bot.utils import InlineKeyboard
 
 
 # Читаем конфиг из окружения
@@ -19,6 +20,9 @@ dp = Dispatcher(TOKEN, base_url=BASE_URL)
 @dp.message_handler(command("start"))
 async def start_command(message):
     """Обработчик команды /start"""
+    kb = InlineKeyboard().row(
+        InlineKeyboard().callback(text="Нажми", payload="hello_clicked"),
+    )
     await message.answer("Привет! Я бот, созданный с помощью MAX Bot Library!")
 
 
