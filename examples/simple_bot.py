@@ -5,7 +5,7 @@
 import os
 import asyncio
 from max_bot import Dispatcher
-from max_bot.filters.base import command, text
+from max_bot.filters.base import command, text, callback_data
 from max_bot.utils import InlineKeyboard
 
 
@@ -61,6 +61,13 @@ async def hello_handler(message):
 async def echo_handler(message):
     """Эхо-обработчик для всех остальных сообщений"""
     await message.answer(f"Вы сказали: {message.text}")
+
+
+@dp.callback_query_handler()
+async def on_callback(callback):
+    # Отправляем одноразовое уведомление пользователю через /answers
+    if getattr(callback, "_api_client", None):
+        await callback._api_client.send_answer(callback_id=callback.id, notification="Кнопка нажата ✅")
 
 
 if __name__ == "__main__":

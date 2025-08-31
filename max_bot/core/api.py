@@ -170,6 +170,8 @@ class MaxApiClient:
             callback_query = __import__("types")  # placeholder to avoid unused import
             from .types import CallbackQuery as _CB
             callback_query = _CB(id=str(cb_id), from_user=user, message=message, data=callback_raw.get("payload") or callback_raw.get("data"))
+            # Инъекция клиента
+            setattr(callback_query, "_api_client", self)
 
         return Update(update_id=update_id or 0, message=message, callback_query=callback_query)
 
