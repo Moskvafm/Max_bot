@@ -2,18 +2,27 @@
 Пример простого бота с использованием MAX Bot Library
 """
 
+import os
 import asyncio
 from max_bot import Dispatcher
-from max_bot.filters.base import command, text
+from max_bot.filters.base import command, text, callback_data
+from max_bot.utils import InlineKeyboard
 
+
+# Читаем конфиг из окружения
+TOKEN = os.getenv("MAX_BOT_TOKEN", "YOUR_BOT_TOKEN")
+BASE_URL = os.getenv("MAX_API_BASE_URL", "https://botapi.max.ru")
 
 # Создаем диспетчер
-dp = Dispatcher("YOUR_BOT_TOKEN")
+dp = Dispatcher(TOKEN, base_url=BASE_URL)
 
 
 @dp.message_handler(command("start"))
 async def start_command(message):
     """Обработчик команды /start"""
+    kb = InlineKeyboard().row(
+        InlineKeyboard().callback(text="Нажми", payload="hello_clicked"),
+    )
     await message.answer("Привет! Я бот, созданный с помощью MAX Bot Library!")
 
 
@@ -52,6 +61,13 @@ async def hello_handler(message):
 async def echo_handler(message):
     """Эхо-обработчик для всех остальных сообщений"""
     await message.answer(f"Вы сказали: {message.text}")
+
+
+@dp.callback_query_handler()
+async def on_callback(callback):
+    # Отправляем одноразовое уведомление пользователю через /answers
+    if getattr(callback, "_api_client", None):
+        await callback._api_client.send_answer(callback_id=callback.id, notification="Кнопка нажата ✅")
 
 
 if __name__ == "__main__":

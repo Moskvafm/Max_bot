@@ -23,19 +23,25 @@ pip install -r requirements.txt
 ## Быстрый старт
 
 ```python
+import os
 from max_bot import Dispatcher
 from max_bot.filters.base import command
 
-# Создаем диспетчер
-dp = Dispatcher("YOUR_BOT_TOKEN")
+TOKEN = os.getenv("MAX_BOT_TOKEN", "YOUR_BOT_TOKEN")
+BASE_URL = os.getenv("MAX_API_BASE_URL", "https://botapi.max.ru")
+
+dp = Dispatcher(TOKEN, base_url=BASE_URL)
 
 @dp.message_handler(command("start"))
 async def start_command(message):
     await message.answer("Привет! Я бот!")
 
-# Запускаем бота
 dp.run()
 ```
+
+Переменные окружения:
+- `MAX_BOT_TOKEN` — токен бота (обязателен)
+- `MAX_API_BASE_URL` — базовый URL Bot API MAX (по умолчанию `https://botapi.max.ru`).
 
 ## Структура проекта
 
@@ -65,6 +71,17 @@ tests/              # Тесты
 ## Примеры
 
 Смотрите папку `examples/` для примеров использования библиотеки.
+
+Для локальной отладки без токена используйте dev-консоль:
+
+```bash
+python3 examples/dev_console.py
+```
+
+Команды в консоли:
+- обычный текст — симулирует входящее сообщение
+- `/cb <payload>` — симулирует нажатие инлайн‑кнопки с указанным payload
+- `/quit` — выход
 
 ## Лицензия
 

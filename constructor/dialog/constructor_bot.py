@@ -3,7 +3,7 @@
 """
 
 import asyncio
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List, Tuple
 from max_bot import Dispatcher
 from max_bot.filters.base import command, text
 from max_bot.core.types import Message
@@ -17,8 +17,8 @@ from ..generator.code_generator import CodeGenerator
 class ConstructorBot:
     """Бот-конструктор для создания других ботов"""
     
-    def __init__(self, token: str):
-        self.dp = Dispatcher(token)
+    def __init__(self, token: str, base_url: Optional[str] = None):
+        self.dp = Dispatcher(token, base_url=base_url)
         self.dialog_manager = DialogManager()
         self._setup_handlers()
     
@@ -191,16 +191,95 @@ class ConstructorBot:
         # Сохраняем описание
         self.dialog_manager.update_config(user_id, description=text)
         
-        # Переходим к подтверждению
-        await self._show_confirmation(message)
+        # Переходим к настройке команд
+        self.dialog_manager.set_state(user_id, DialogState.COMMANDS)
+        await message.answer(
+            "Теперь задайте команды бота.\n\n"
+            "Формат: по одной на строку, 'command: Описание'.\n"
+            "Примеры:\n"
+            "/start: Начать работу с ботом\n"
+            "/help: Показать справку\n\n"
+            "Когда закончите, отправьте весь список одной строкой сообщением."
+        )
     
     async def _handle_commands_input(self, message: Message, text: str):
-        """Обработка ввода команд (заглушка)"""
-        await message.answer("Функция настройки команд будет добавлена позже.")
+        """Обработка ввода команд"""
+        user_id = message.from_user.id
+        commands, parse_error = self._parse_commands(text)
+        if parse_error:
+            await message.answer(f"❌ Ошибка в формате команд: {parse_error}\nПопробуйте еще раз.")
+            return
+        
+        is_valid, error = BotValidator.validate_commands(commands)
+        if not is_valid:
+            await message.answer(f"❌ {error}\nПопробуйте еще раз.")
+            return
+        
+        self.dialog_manager.update_config(user_id, commands=commands)
+        self.dialog_manager.set_state(user_id, DialogState.RESPONSES)
+        
+        # Подсказка по ответам
+        example_keys = [c["command"] for c in commands][:3]
+        examples = "\n".join([f"{k}: Ответ для команды /{k}" for k in example_keys])
+        await message.answer(
+            "Команды сохранены. Теперь задайте ответы.\n\n"
+            "Формат: 'ключ: текст ответа' по одному на строку.\n"
+            "Ключи обычно совпадают с именами команд без '/'. Можно добавить 'default' для ответа по умолчанию.\n\n"
+            f"Примеры:\n{examples}\ndefault: Не понимаю команду\n\n"
+            "Отправьте список одним сообщением."
+        )
     
     async def _handle_responses_input(self, message: Message, text: str):
-        """Обработка ввода ответов (заглушка)"""
-        await message.answer("Функция настройки ответов будет добавлена позже.")
+        """Обработка ввода ответов"""
+        user_id = message.from_user.id
+        responses, parse_error = self._parse_responses(text)
+        if parse_error:
+            await message.answer(f"❌ Ошибка в формате ответов: {parse_error}\nПопробуйте еще раз.")
+            return
+        
+        is_valid, error = BotValidator.validate_responses(responses)
+        if not is_valid:
+            await message.answer(f"❌ {error}\nПопробуйте еще раз.")
+            return
+        
+        self.dialog_manager.update_config(user_id, responses=responses)
+        await self._show_confirmation(message)
+
+    def _parse_commands(self, raw: str) -> Tuple[List[Dict[str, str]], Optional[str]]:
+        """Парсинг списка команд из текста пользователя."""
+        lines = [line.strip() for line in raw.splitlines() if line.strip()]
+        if not lines:
+            return [], None
+        commands: List[Dict[str, str]] = []
+        for idx, line in enumerate(lines, 1):
+            # Допускаем разделители ':' или '-' и возможный слеш в начале
+            separator = ':' if ':' in line else ('-' if '-' in line else None)
+            if not separator:
+                return [], f"Строка {idx} должна содержать ':' или '-' как разделитель"
+            name_part, desc_part = [p.strip() for p in line.split(separator, 1)]
+            if name_part.startswith('/'):
+                name_part = name_part[1:]
+            if not name_part:
+                return [], f"Пустое имя команды в строке {idx}"
+            commands.append({"command": name_part.lower(), "description": desc_part})
+        return commands, None
+
+    def _parse_responses(self, raw: str) -> Tuple[Dict[str, str], Optional[str]]:
+        """Парсинг словаря ответов из текста пользователя."""
+        lines = [line.strip() for line in raw.splitlines() if line.strip()]
+        if not lines:
+            return {}, None
+        responses: Dict[str, str] = {}
+        for idx, line in enumerate(lines, 1):
+            if ':' not in line:
+                return {}, f"Строка {idx} должна содержать ':' как разделитель"
+            key, value = [p.strip() for p in line.split(':', 1)]
+            if key.startswith('/'):
+                key = key[1:]
+            if not key:
+                return {}, f"Пустой ключ в строке {idx}"
+            responses[key] = value
+        return responses, None
     
     async def _handle_confirmation(self, message: Message, text: str):
         """Обработка подтверждения"""

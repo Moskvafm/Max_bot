@@ -37,6 +37,16 @@ class Message:
     caption: Optional[str] = None
     reply_to_message: Optional['Message'] = None
     entities: List[Dict[str, Any]] = None
+    # Клиент может быть внедрён динамически (см. MaxApiClient._parse_message)
+    _api_client: Any = None  # type: ignore
+
+    async def answer(self, text: str) -> None:
+        """Отправка ответа на сообщение через API клиента, если он доступен."""
+        if getattr(self, "_api_client", None):
+            await self._api_client.send_message(self.chat.id, text)
+            return
+        # Фоллбек: чтобы не ронять обработчики, если клиент не внедрён
+        print(f"[MAX Bot] -> chat {self.chat.id}: {text}")
 
 
 @dataclass
@@ -46,6 +56,7 @@ class CallbackQuery:
     from_user: User
     message: Optional[Message] = None
     data: Optional[str] = None
+    _api_client: Any = None  # type: ignore
 
 
 @dataclass
