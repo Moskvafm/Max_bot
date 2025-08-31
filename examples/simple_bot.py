@@ -2,13 +2,18 @@
 Пример простого бота с использованием MAX Bot Library
 """
 
+import os
 import asyncio
 from max_bot import Dispatcher
 from max_bot.filters.base import command, text
 
 
+# Читаем конфиг из окружения
+TOKEN = os.getenv("MAX_BOT_TOKEN", "YOUR_BOT_TOKEN")
+BASE_URL = os.getenv("MAX_API_BASE_URL")  # например, https://api.max.example.com/bot
+
 # Создаем диспетчер
-dp = Dispatcher("YOUR_BOT_TOKEN")
+dp = Dispatcher(TOKEN, base_url=BASE_URL)
 
 
 @dp.message_handler(command("start"))

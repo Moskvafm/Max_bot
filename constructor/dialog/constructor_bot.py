@@ -17,8 +17,8 @@ from ..generator.code_generator import CodeGenerator
 class ConstructorBot:
     """Бот-конструктор для создания других ботов"""
     
-    def __init__(self, token: str):
-        self.dp = Dispatcher(token)
+    def __init__(self, token: str, base_url: Optional[str] = None):
+        self.dp = Dispatcher(token, base_url=base_url)
         self.dialog_manager = DialogManager()
         self._setup_handlers()
     

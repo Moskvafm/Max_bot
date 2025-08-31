@@ -8,17 +8,20 @@ from typing import List, Optional, Dict, Any
 from .router import Router
 from .types import Update, BotInfo
 from ..middleware.base import BaseMiddleware
+from .api import MaxApiClient
 
 
 class Dispatcher:
     """Основной диспетчер для управления ботом"""
     
-    def __init__(self, token: str = None):
+    def __init__(self, token: str = None, base_url: str = None, api_client: MaxApiClient = None):
         self.token = token
         self.router = Router("main")
         self.middlewares: List[BaseMiddleware] = []
         self.logger = logging.getLogger(__name__)
         self._running = False
+        self._base_url = base_url or "https://api.max.example.com/bot"
+        self.api_client: Optional[MaxApiClient] = api_client
         
         # Настройка логирования
         logging.basicConfig(
@@ -63,16 +66,23 @@ class Dispatcher:
         """Запуск polling для получения обновлений"""
         if not self.token:
             raise ValueError("Token is required for polling")
+        # Инициализация клиента при необходимости
+        if not self.api_client:
+            self.api_client = MaxApiClient(token=self.token, base_url=self._base_url)
         
         self._running = True
         self.logger.info("Starting polling...")
         
         try:
+            offset: Optional[int] = None
+            assert self.api_client is not None
             while self._running:
                 try:
-                    # Здесь будет логика получения обновлений от MAX API
-                    # Пока заглушка
-                    await asyncio.sleep(1)
+                    updates = await self.api_client.get_updates(offset=offset, timeout=timeout, limit=limit)
+                    for upd in updates:
+                        # Обрабатываем update
+                        await self.process_update(upd)
+                        offset = (upd.update_id or 0) + 1
                 except Exception as e:
                     self.logger.error(f"Polling error: {e}")
                     await asyncio.sleep(5)
@@ -80,6 +90,12 @@ class Dispatcher:
             self.logger.info("Polling stopped by user")
         finally:
             self._running = False
+            # Корректное закрытие клиента
+            if self.api_client:
+                try:
+                    await self.api_client.close()
+                except Exception:
+                    pass
     
     def stop_polling(self):
         """Остановка polling"""

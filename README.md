@@ -23,19 +23,26 @@ pip install -r requirements.txt
 ## Быстрый старт
 
 ```python
+import os
 from max_bot import Dispatcher
 from max_bot.filters.base import command
 
-# Создаем диспетчер
-dp = Dispatcher("YOUR_BOT_TOKEN")
+TOKEN = os.getenv("MAX_BOT_TOKEN", "YOUR_BOT_TOKEN")
+BASE_URL = os.getenv("MAX_API_BASE_URL")  # например, https://api.max.example.com/bot
+
+dp = Dispatcher(TOKEN, base_url=BASE_URL)
 
 @dp.message_handler(command("start"))
 async def start_command(message):
     await message.answer("Привет! Я бот!")
 
-# Запускаем бота
 dp.run()
 ```
+
+Переменные окружения:
+- `MAX_BOT_TOKEN` — токен бота (обязателен)
+- `MAX_API_BASE_URL` — базовый URL Bot API MAX (например, `https://api.max.example.com/bot`)  
+  При необходимости замените на фактический URL из документации MAX.
 
 ## Структура проекта
 
