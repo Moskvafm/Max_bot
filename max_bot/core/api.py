@@ -88,6 +88,21 @@ class MaxApiClient:
         resp.raise_for_status()
         return resp.json().get("result", resp.json())
 
+    async def send_answer(
+        self,
+        callback_id: str,
+        message: Optional[Dict[str, Any]] = None,
+        notification: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        body: Dict[str, Any] = {"callback_id": callback_id}
+        if message is not None:
+            body["message"] = message
+        if notification is not None:
+            body["notification"] = notification
+        resp = await self.client.post(self._url("/answers"), params={"access_token": self.token}, json=body)
+        resp.raise_for_status()
+        return resp.json()
+
     def _parse_user(self, raw: Dict[str, Any]) -> User:
         return User(
             id=raw.get("id") or raw.get("user_id"),
@@ -106,13 +121,14 @@ class MaxApiClient:
         )
 
     def _parse_message(self, raw: Dict[str, Any]) -> Message:
-        from_user_raw = raw.get("from") or raw.get("from_user")
-        chat_raw = raw.get("chat") or {"id": raw.get("peer_id")}
+        from_user_raw = raw.get("from") or raw.get("from_user") or raw.get("sender")
+        chat_raw = raw.get("chat") or raw.get("recipient") or {"id": raw.get("peer_id")}
         date_raw = raw.get("date") or raw.get("timestamp")
-        text = raw.get("text") or raw.get("body") or raw.get("caption")
+        body_raw = raw.get("body") or {}
+        text = raw.get("text") or body_raw.get("text") or raw.get("caption")
 
         msg = Message(
-            message_id=raw.get("message_id") or raw.get("id"),
+            message_id=raw.get("message_id") or raw.get("id") or 0,
             date=_ts_to_datetime(date_raw) if date_raw else datetime.now(timezone.utc),
             chat=self._parse_chat(chat_raw) if chat_raw else Chat(id=0, type="private"),
             from_user=self._parse_user(from_user_raw) if from_user_raw else None,
@@ -126,11 +142,34 @@ class MaxApiClient:
         return msg
 
     def _parse_update(self, raw: Dict[str, Any]) -> Optional[Update]:
-        update_id = raw.get("update_id") or raw.get("id")
-        message_raw = raw.get("message") or raw.get("message_new") or raw.get("event_message")
-        callback_raw = raw.get("callback_query")
+        update_id = raw.get("update_id") or raw.get("id") or raw.get("timestamp")
+        update_type = raw.get("update_type")
+        message_raw = None
+        callback_raw = None
+
+        if update_type == "message_created":
+            message_raw = raw.get("message")
+        elif update_type == "message_callback":
+            callback_raw = raw.get("callback")
+        else:
+            # попытка автоопределения
+            if raw.get("message"):
+                message_raw = raw.get("message")
+            if raw.get("callback"):
+                callback_raw = raw.get("callback")
 
         message = self._parse_message(message_raw) if message_raw else None
-        # callback парсинг опущен до появления спецификации
-        return Update(update_id=update_id, message=message)
+
+        callback_query = None
+        if callback_raw:
+            # callback_id обязателен
+            cb_id = callback_raw.get("callback_id") or callback_raw.get("id") or ""
+            # Постараемся извлечь пользователя
+            user_raw = callback_raw.get("user") or (message_raw or {}).get("sender") or {}
+            user = self._parse_user(user_raw) if user_raw else User(id=0)
+            callback_query = __import__("types")  # placeholder to avoid unused import
+            from .types import CallbackQuery as _CB
+            callback_query = _CB(id=str(cb_id), from_user=user, message=message, data=callback_raw.get("payload") or callback_raw.get("data"))
+
+        return Update(update_id=update_id or 0, message=message, callback_query=callback_query)
 
