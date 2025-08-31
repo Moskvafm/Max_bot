@@ -38,6 +38,14 @@ class Message:
     reply_to_message: Optional['Message'] = None
     entities: List[Dict[str, Any]] = None
 
+    async def answer(self, text: str) -> None:
+        """Отправка ответа на сообщение (заглушка).
+
+        В реальной интеграции здесь будет вызов MAX API для отправки сообщения.
+        Пока просто выводим сообщение в stdout, чтобы примеры работали.
+        """
+        print(f"[MAX Bot] -> chat {self.chat.id}: {text}")
+
 
 @dataclass
 class CallbackQuery:

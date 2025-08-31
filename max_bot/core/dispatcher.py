@@ -38,10 +38,18 @@ class Dispatcher:
         """Обработка обновления"""
         self.logger.debug(f"Processing update {update.update_id}")
         
-        # Применяем middleware
-        handler = self.router.handle
+        # Применяем middleware (формируем цепочку вызовов)
+        async def final_handler(u: Update) -> Any:
+            return await self.router.handle(u)
+
+        handler = final_handler
         for middleware in reversed(self.middlewares):
-            handler = lambda h=handler, m=middleware: m(h, update)
+            previous_handler = handler
+
+            async def composed(u: Update, m=middleware, h=previous_handler):
+                return await m(h, u)
+
+            handler = composed
         
         try:
             result = await handler(update)

@@ -51,6 +51,7 @@ dp = Dispatcher("YOUR_BOT_TOKEN")
         return '''from max_bot import Dispatcher
 from max_bot.filters.base import command, text, callback_data
 from max_bot.middleware.base import LoggingMiddleware, ThrottlingMiddleware
+from config import BOT_RESPONSES
 
 import asyncio
 import logging'''
@@ -69,7 +70,7 @@ import logging'''
 @dp.message_handler(command("{command_name}"))
 async def {command_name}_command(message):
     """{description}"""
-    response = config.responses.get("{command_name}", "Команда в разработке")
+    response = BOT_RESPONSES.get("{command_name}", "Команда в разработке")
     await message.answer(response)'''
             
             handlers.append(handler_code)
@@ -79,7 +80,7 @@ async def {command_name}_command(message):
 @dp.message_handler()
 async def default_handler(message):
     """Обработчик по умолчанию"""
-    response = config.responses.get("default", "Не понимаю эту команду. Используйте /help для справки.")
+    response = BOT_RESPONSES.get("default", "Не понимаю эту команду. Используйте /help для справки.")
     await message.answer(response)'''
         
         handlers.append(default_handler)
