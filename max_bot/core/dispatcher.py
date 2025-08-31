@@ -8,6 +8,7 @@ from typing import List, Optional, Dict, Any
 from .router import Router
 from .types import Update, BotInfo
 from ..middleware.base import BaseMiddleware
+from ..utils.http_client import MaxAPIClient
 
 
 class Dispatcher:
@@ -19,6 +20,7 @@ class Dispatcher:
         self.middlewares: List[BaseMiddleware] = []
         self.logger = logging.getLogger(__name__)
         self._running = False
+        self.api_client: Optional[MaxAPIClient] = None
         
         # Настройка логирования
         logging.basicConfig(
@@ -59,19 +61,30 @@ class Dispatcher:
         self._running = True
         self.logger.info("Starting polling...")
         
-        try:
-            while self._running:
-                try:
-                    # Здесь будет логика получения обновлений от MAX API
-                    # Пока заглушка
-                    await asyncio.sleep(1)
-                except Exception as e:
-                    self.logger.error(f"Polling error: {e}")
-                    await asyncio.sleep(5)
-        except KeyboardInterrupt:
-            self.logger.info("Polling stopped by user")
-        finally:
-            self._running = False
+        async with MaxAPIClient(self.token) as self.api_client:
+            offset = 0
+            try:
+                while self._running:
+                    try:
+                        # Получаем обновления
+                        updates = await self.api_client.get_updates(offset=offset, limit=limit)
+                        
+                        for update in updates:
+                            await self.process_update(update)
+                            offset = update.update_id + 1
+                        
+                        if not updates:
+                            await asyncio.sleep(1)
+                        else:
+                            await asyncio.sleep(0.1)
+                            
+                    except Exception as e:
+                        self.logger.error(f"Polling error: {e}")
+                        await asyncio.sleep(5)
+            except KeyboardInterrupt:
+                self.logger.info("Polling stopped by user")
+            finally:
+                self._running = False
     
     def stop_polling(self):
         """Остановка polling"""
@@ -83,13 +96,11 @@ class Dispatcher:
         if not self.token:
             return None
         
-        # Здесь будет запрос к MAX API
-        # Пока заглушка
-        return BotInfo(
-            id=123456789,
-            username="test_bot",
-            first_name="Test Bot"
-        )
+        if not self.api_client:
+            async with MaxAPIClient(self.token) as client:
+                return await client.get_me()
+        else:
+            return await self.api_client.get_me()
     
     def message_handler(self, filters=None):
         """Декоратор для регистрации обработчика сообщений"""

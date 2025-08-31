@@ -37,6 +37,12 @@ class Message:
     caption: Optional[str] = None
     reply_to_message: Optional['Message'] = None
     entities: List[Dict[str, Any]] = None
+    
+    async def answer(self, text: str, **kwargs) -> Dict[str, Any]:
+        """Ответ на сообщение"""
+        from ..utils.http_client import MaxAPIClient
+        # В реальной реализации здесь будет доступ к API клиенту
+        return {"ok": True, "result": {"message_id": self.message_id + 1}}
 
 
 @dataclass
@@ -46,6 +52,12 @@ class CallbackQuery:
     from_user: User
     message: Optional[Message] = None
     data: Optional[str] = None
+    
+    async def answer(self, text: str = None) -> Dict[str, Any]:
+        """Ответ на callback запрос"""
+        from ..utils.http_client import MaxAPIClient
+        # В реальной реализации здесь будет доступ к API клиенту
+        return {"ok": True}
 
 
 @dataclass
