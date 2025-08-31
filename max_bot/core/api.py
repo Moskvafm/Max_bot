@@ -33,9 +33,10 @@ class MaxApiClient:
     def __init__(
         self,
         token: str,
-        base_url: str = "https://api.max.example.com/bot",
-        get_updates_path: str = "/getUpdates",
-        send_message_path: str = "/sendMessage",
+        base_url: str = "https://botapi.max.ru",
+        get_updates_path: str = "/updates",
+        send_message_path: str = "/messages",
+        me_path: str = "/me",
         timeout: float = 30.0,
     ) -> None:
         if not token:
@@ -44,13 +45,14 @@ class MaxApiClient:
         self.base_url = base_url.rstrip("/")
         self.get_updates_path = get_updates_path
         self.send_message_path = send_message_path
+        self.me_path = me_path
         self.client = httpx.AsyncClient(timeout=timeout)
 
     async def close(self) -> None:
         await self.client.aclose()
 
     def _url(self, path: str) -> str:
-        return f"{self.base_url}{self.token}{path}"
+        return f"{self.base_url}{path}"
 
     async def get_updates(
         self, offset: Optional[int] = None, timeout: int = 30, limit: int = 100
@@ -58,6 +60,8 @@ class MaxApiClient:
         params: Dict[str, Any] = {"timeout": timeout, "limit": limit}
         if offset is not None:
             params["offset"] = offset
+        # MAX: токен через access_token query
+        params["access_token"] = self.token
         resp = await self.client.get(self._url(self.get_updates_path), params=params)
         resp.raise_for_status()
         data = resp.json()
@@ -73,11 +77,16 @@ class MaxApiClient:
 
     async def send_message(self, chat_id: int, text: str) -> Message:
         payload = {"chat_id": chat_id, "text": text}
-        resp = await self.client.post(self._url(self.send_message_path), json=payload)
+        resp = await self.client.post(self._url(self.send_message_path), params={"access_token": self.token}, json=payload)
         resp.raise_for_status()
         data = resp.json()
         message_obj = data.get("result", data)
         return self._parse_message(message_obj)
+
+    async def get_me(self) -> Dict[str, Any]:
+        resp = await self.client.get(self._url(self.me_path), params={"access_token": self.token})
+        resp.raise_for_status()
+        return resp.json().get("result", resp.json())
 
     def _parse_user(self, raw: Dict[str, Any]) -> User:
         return User(

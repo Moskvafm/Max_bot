@@ -28,7 +28,7 @@ from max_bot import Dispatcher
 from max_bot.filters.base import command
 
 TOKEN = os.getenv("MAX_BOT_TOKEN", "YOUR_BOT_TOKEN")
-BASE_URL = os.getenv("MAX_API_BASE_URL")  # например, https://api.max.example.com/bot
+BASE_URL = os.getenv("MAX_API_BASE_URL", "https://botapi.max.ru")
 
 dp = Dispatcher(TOKEN, base_url=BASE_URL)
 
@@ -41,8 +41,7 @@ dp.run()
 
 Переменные окружения:
 - `MAX_BOT_TOKEN` — токен бота (обязателен)
-- `MAX_API_BASE_URL` — базовый URL Bot API MAX (например, `https://api.max.example.com/bot`)  
-  При необходимости замените на фактический URL из документации MAX.
+- `MAX_API_BASE_URL` — базовый URL Bot API MAX (по умолчанию `https://botapi.max.ru`).
 
 ## Структура проекта
 

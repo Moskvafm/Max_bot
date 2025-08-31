@@ -20,7 +20,7 @@ class Dispatcher:
         self.middlewares: List[BaseMiddleware] = []
         self.logger = logging.getLogger(__name__)
         self._running = False
-        self._base_url = base_url or "https://api.max.example.com/bot"
+        self._base_url = base_url or "https://botapi.max.ru"
         self.api_client: Optional[MaxApiClient] = api_client
         
         # Настройка логирования
@@ -106,14 +106,18 @@ class Dispatcher:
         """Получение информации о боте"""
         if not self.token:
             return None
-        
-        # Здесь будет запрос к MAX API
-        # Пока заглушка
-        return BotInfo(
-            id=123456789,
-            username="test_bot",
-            first_name="Test Bot"
-        )
+        if not self.api_client:
+            self.api_client = MaxApiClient(token=self.token, base_url=self._base_url)
+        try:
+            data = await self.api_client.get_me()
+            return BotInfo(
+                id=data.get("user_id") or data.get("id") or 0,
+                username=data.get("username", ""),
+                first_name=data.get("name", ""),
+            )
+        except Exception as e:
+            self.logger.error(f"get_me error: {e}")
+            return None
     
     def message_handler(self, filters=None):
         """Декоратор для регистрации обработчика сообщений"""
